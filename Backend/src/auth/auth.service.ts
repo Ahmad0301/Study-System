@@ -37,11 +37,44 @@ export class AuthService {
   ) {}
 
   private isSmtpConfigured(): boolean {
-    return !!(
-      this.configService.get<string>('SMTP_HOST') &&
-      this.configService.get<string>('SMTP_USER') &&
-      this.configService.get<string>('SMTP_PASS')
-    );
+    const smtpHost = (this.configService.get<string>('SMTP_HOST') || '').trim();
+    const smtpUser = (this.configService.get<string>('SMTP_USER') || '').trim();
+    const smtpPass = (this.configService.get<string>('SMTP_PASS') || '').trim();
+    return !!(smtpHost && smtpUser && smtpPass);
+  }
+
+  private createTransporter() {
+    const smtpHost = (this.configService.get<string>('SMTP_HOST') || '').trim();
+    const smtpUser = (this.configService.get<string>('SMTP_USER') || '').trim();
+    const rawPass = (this.configService.get<string>('SMTP_PASS') || '').trim();
+    const smtpPass = rawPass.replace(/\s+/g, ''); // Strip spaces from Gmail App Passwords
+
+    if (!smtpHost || !smtpUser || !smtpPass) {
+      return null;
+    }
+
+    const isGmail = smtpHost.toLowerCase().includes('gmail');
+
+    if (isGmail) {
+      return nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      });
+    }
+
+    const port = Number(this.configService.get<string>('SMTP_PORT') || 587);
+    return nodemailer.createTransport({
+      host: smtpHost,
+      port,
+      secure: port === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    });
   }
 
   // ---------- SIGN UP ----------
@@ -178,25 +211,19 @@ export class AuthService {
       </div>
     `;
 
-    const smtpHost = this.configService.get<string>('SMTP_HOST');
-    const smtpUser = this.configService.get<string>('SMTP_USER');
-    const smtpPass = this.configService.get<string>('SMTP_PASS');
+    const transporter = this.createTransporter();
+    const smtpUser = (this.configService.get<string>('SMTP_USER') || '').trim();
 
-    if (smtpHost && smtpUser && smtpPass) {
+    if (transporter && smtpUser) {
       try {
-        const transporter = nodemailer.createTransport({
-          host: smtpHost,
-          port: Number(this.configService.get<string>('SMTP_PORT') || 587),
-          secure: false,
-          auth: { user: smtpUser, pass: smtpPass },
-        });
-
         await transporter.sendMail({
           from: `"StudyAI Assistant" <${smtpUser}>`,
           to: dto.email,
           subject: 'Password Reset Request — StudyAI Assistant',
           html: emailHtml,
         });
+        // eslint-disable-next-line no-console
+        console.log(`✅ Password reset email sent via SMTP to ${dto.email}`);
       } catch (emailErr) {
         // eslint-disable-next-line no-console
         console.error('Failed to send SMTP email:', emailErr);
@@ -334,36 +361,34 @@ export class AuthService {
           <p style="color: #94a3b8; font-size: 12px;">If you did not create an account, you can ignore this email.</p>
         </div>
       `;
-      const smtpHost = this.configService.get<string>('SMTP_HOST');
-      const smtpUser = this.configService.get<string>('SMTP_USER');
-      const smtpPass = this.configService.get<string>('SMTP_PASS');
-      if (smtpHost && smtpUser && smtpPass) {
-        const transporter = nodemailer.createTransport({
-          host: smtpHost,
-          port: Number(this.configService.get<string>('SMTP_PORT') || 587),
-          secure: false,
-          auth: { user: smtpUser, pass: smtpPass },
-        });
+      const transporter = this.createTransporter();
+      const smtpUser = (this.configService.get<string>('SMTP_USER') || '').trim();
+
+      if (transporter && smtpUser) {
         await transporter.sendMail({
           from: `"StudyAI Assistant" <${smtpUser}>`,
           to: email,
           subject: 'Verify your email — StudyAI Assistant',
           html: emailHtml,
         });
+        // eslint-disable-next-line no-console
+        console.log(`✅ Verification email sent via SMTP to ${email}`);
       } else {
         const testAccount = await nodemailer.createTestAccount();
-        const transporter = nodemailer.createTransport({
+        const testTransporter = nodemailer.createTransport({
           host: 'smtp.ethereal.email',
           port: 587,
           secure: false,
           auth: { user: testAccount.user, pass: testAccount.pass },
         });
-        await transporter.sendMail({
+        const info = await testTransporter.sendMail({
           from: '"StudyAI Assistant" <noreply@studyai.com>',
           to: email,
           subject: 'Verify your email — StudyAI Assistant',
           html: emailHtml,
         });
+        // eslint-disable-next-line no-console
+        console.log(`📧 Test verification email sent: ${nodemailer.getTestMessageUrl(info)}`);
       }
     } catch (err) {
       // eslint-disable-next-line no-console

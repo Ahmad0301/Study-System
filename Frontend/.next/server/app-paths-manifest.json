@@ -1,0 +1,8 @@
+{
+  "/icon.png/route": "app/icon.png/route.js",
+  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
+  "/(dashboard)/dashboard/workspace/page": "app/(dashboard)/dashboard/workspace/page.js",
+  "/(dashboard)/dashboard/settings/page": "app/(dashboard)/dashboard/settings/page.js",
+  "/(dashboard)/dashboard/subjects/page": "app/(dashboard)/dashboard/subjects/page.js",
+  "/(dashboard)/dashboard/subjects/[id]/page": "app/(dashboard)/dashboard/subjects/[id]/page.js"
+}

@@ -99,6 +99,13 @@ export class AuthController {
     return this.authService.verifyEmail(token);
   }
 
+  // GET /auth/test-email?to=email@example.com — test live SMTP email delivery
+  @Get('test-email')
+  @HttpCode(HttpStatus.OK)
+  testEmail(@Query('to') to: string) {
+    return this.authService.testEmailDelivery(to);
+  }
+
   // POST /auth/resend-verification
   @Post('resend-verification')
   @HttpCode(HttpStatus.OK)

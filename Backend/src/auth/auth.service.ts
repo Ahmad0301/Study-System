@@ -53,14 +53,23 @@ export class AuthService {
       return null;
     }
 
-    const port = Number(this.configService.get<string>('SMTP_PORT') || 465);
-    const isGmail = smtpHost.toLowerCase().includes('gmail');
-    const isSecure = port === 465 || isGmail;
+    const isGmail = smtpHost.toLowerCase().includes('gmail') || smtpUser.toLowerCase().includes('@gmail.com');
 
+    if (isGmail) {
+      return nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      });
+    }
+
+    const port = Number(this.configService.get<string>('SMTP_PORT') || 587);
     return nodemailer.createTransport({
-      host: isGmail ? 'smtp.gmail.com' : smtpHost,
-      port: isGmail ? 465 : port,
-      secure: isSecure,
+      host: smtpHost,
+      port,
+      secure: port === 465,
       auth: {
         user: smtpUser,
         pass: smtpPass,
@@ -69,6 +78,28 @@ export class AuthService {
         rejectUnauthorized: false,
       },
     });
+  }
+
+  async testEmailDelivery(toEmail?: string) {
+    const targetEmail = toEmail || this.configService.get<string>('SMTP_USER') || 'ahmedebay0301@gmail.com';
+    const transporter = this.createTransporter();
+    if (!transporter) {
+      return { success: false, error: 'SMTP transporter not configured. Check environment variables on Render.' };
+    }
+
+    try {
+      await transporter.verify();
+      const info = await transporter.sendMail({
+        from: `"StudyAI Assistant" <${this.configService.get<string>('SMTP_USER')}>`,
+        to: targetEmail,
+        subject: 'Test Email — StudyAI Assistant',
+        text: 'This is a test email sent from your deployed StudyAI Assistant backend on Render.',
+        html: '<h3>Test Email Delivered!</h3><p>Your Gmail SMTP setup on Render is working perfectly.</p>',
+      });
+      return { success: true, message: `Test email successfully sent to ${targetEmail}`, messageId: info.messageId };
+    } catch (err: any) {
+      return { success: false, error: err?.message || err };
+    }
   }
 
   // ---------- SIGN UP ----------
@@ -93,18 +124,19 @@ export class AuthService {
     user.verificationTokenExpires = expires;
     await user.save();
 
+    let emailSent = false;
     try {
       await this.sendVerificationEmail(user.email, token);
+      emailSent = true;
     } catch (err: any) {
       // eslint-disable-next-line no-console
       console.error('Email verification delivery failed during signup:', err?.message || err);
-      throw new InternalServerErrorException(
-        'Account created, but failed to send verification email. Please try resending verification.',
-      );
     }
 
     return {
-      message: 'Account created successfully. Please check your email inbox to verify your account before signing in.',
+      message: emailSent
+        ? 'Account created successfully. Please check your email inbox to verify your account before signing in.'
+        : 'Account created successfully. Verification email could not be delivered — please click Resend Verification.',
       user: this.sanitizeUser(user),
     };
   }

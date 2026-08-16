@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from './auth/auth.module';
 import { SubjectsModule } from './subjects/subjects.module';
@@ -15,8 +15,17 @@ import { AiModule } from './ai/ai.module';
       envFilePath: '.env',
     }),
 
-    // Connects to MongoDB using the URI you provide in .env (MONGODB_URI)
-    MongooseModule.forRoot(process.env.MONGODB_URI as string),
+    // Connects to MongoDB using ConfigService from .env (MONGODB_URI)
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        uri:
+          configService.get<string>('MONGODB_URI') ||
+          process.env.MONGODB_URI ||
+          'mongodb://127.0.0.1:27017/study-assistant',
+      }),
+    }),
 
     AuthModule,
     SubjectsModule,

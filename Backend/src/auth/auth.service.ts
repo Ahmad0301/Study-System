@@ -51,12 +51,17 @@ export class AuthService {
       password: hashedPassword,
     });
 
-    // Generate verification token and send email
-    const { token, hashedToken, expires } = await this.generateVerificationToken();
-    user.verificationToken = hashedToken;
-    user.verificationTokenExpires = expires;
-    await user.save();
-    await this.sendVerificationEmail(user.email, token);
+    // Generate verification token and send email (wrapped in try/catch so email failure never crashes signup)
+    try {
+      const { token, hashedToken, expires } = await this.generateVerificationToken();
+      user.verificationToken = hashedToken;
+      user.verificationTokenExpires = expires;
+      await user.save();
+      await this.sendVerificationEmail(user.email, token);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Email verification error during signup:', err);
+    }
 
     return {
       message: 'Account created successfully. Please verify your email before signing in.',
@@ -303,48 +308,53 @@ export class AuthService {
   }
 
   private async sendVerificationEmail(email: string, token: string) {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
-    const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
-    const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
-        <h2 style="color: #2563eb; font-size: 20px; font-weight: 800; margin-bottom: 8px;">Verify Your Email</h2>
-        <p style="color: #475569; font-size: 14px; line-height: 1.5;">Click the button below to verify your email address.</p>
-        <div style="margin: 28px 0;">
-          <a href="${verificationUrl}" style="background-color: #2563eb; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);">Verify Email</a>
+    try {
+      const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+      const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+          <h2 style="color: #2563eb; font-size: 20px; font-weight: 800; margin-bottom: 8px;">Verify Your Email</h2>
+          <p style="color: #475569; font-size: 14px; line-height: 1.5;">Click the button below to verify your email address.</p>
+          <div style="margin: 28px 0;">
+            <a href="${verificationUrl}" style="background-color: #2563eb; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);">Verify Email</a>
+          </div>
+          <p style="color: #94a3b8; font-size: 12px;">If you did not create an account, you can ignore this email.</p>
         </div>
-        <p style="color: #94a3b8; font-size: 12px;">If you did not create an account, you can ignore this email.</p>
-      </div>
-    `;
-    const smtpHost = this.configService.get<string>('SMTP_HOST');
-    const smtpUser = this.configService.get<string>('SMTP_USER');
-    const smtpPass = this.configService.get<string>('SMTP_PASS');
-    if (smtpHost && smtpUser && smtpPass) {
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: Number(this.configService.get<string>('SMTP_PORT') || 587),
-        secure: false,
-        auth: { user: smtpUser, pass: smtpPass },
-      });
-      await transporter.sendMail({
-        from: `"StudyAI Assistant" <${smtpUser}>`,
-        to: email,
-        subject: 'Verify your email — StudyAI Assistant',
-        html: emailHtml,
-      });
-    } else {
-      const testAccount = await nodemailer.createTestAccount();
-      const transporter = nodemailer.createTransport({
-        host: 'smtp.ethereal.email',
-        port: 587,
-        secure: false,
-        auth: { user: testAccount.user, pass: testAccount.pass },
-      });
-      await transporter.sendMail({
-        from: '"StudyAI Assistant" <noreply@studyai.com>',
-        to: email,
-        subject: 'Verify your email — StudyAI Assistant',
-        html: emailHtml,
-      });
+      `;
+      const smtpHost = this.configService.get<string>('SMTP_HOST');
+      const smtpUser = this.configService.get<string>('SMTP_USER');
+      const smtpPass = this.configService.get<string>('SMTP_PASS');
+      if (smtpHost && smtpUser && smtpPass) {
+        const transporter = nodemailer.createTransport({
+          host: smtpHost,
+          port: Number(this.configService.get<string>('SMTP_PORT') || 587),
+          secure: false,
+          auth: { user: smtpUser, pass: smtpPass },
+        });
+        await transporter.sendMail({
+          from: `"StudyAI Assistant" <${smtpUser}>`,
+          to: email,
+          subject: 'Verify your email — StudyAI Assistant',
+          html: emailHtml,
+        });
+      } else {
+        const testAccount = await nodemailer.createTestAccount();
+        const transporter = nodemailer.createTransport({
+          host: 'smtp.ethereal.email',
+          port: 587,
+          secure: false,
+          auth: { user: testAccount.user, pass: testAccount.pass },
+        });
+        await transporter.sendMail({
+          from: '"StudyAI Assistant" <noreply@studyai.com>',
+          to: email,
+          subject: 'Verify your email — StudyAI Assistant',
+          html: emailHtml,
+        });
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to send verification email:', err);
     }
   }
 
@@ -382,11 +392,11 @@ export class AuthService {
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '15m',
+        secret: this.configService.get<string>('JWT_ACCESS_SECRET') || 'default_jwt_access_secret_key_change_me',
+        expiresIn: this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '7d',
       }),
       this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET') || 'default_jwt_refresh_secret_key_change_me',
         expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d',
       }),
     ]);

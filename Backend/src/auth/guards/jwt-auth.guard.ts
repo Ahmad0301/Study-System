@@ -25,7 +25,7 @@ export class JwtAuthGuard implements CanActivate {
 
     try {
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
+        secret: this.configService.get<string>('JWT_ACCESS_SECRET') || 'default_jwt_access_secret_key_change_me',
       });
       // Attach decoded payload to request so controllers can access req.user
       (request as any).user = payload;

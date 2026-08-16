@@ -19,9 +19,9 @@ import { CloudinaryModule } from '../cloudinary/cloudinary.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_ACCESS_SECRET'),
+        secret: configService.get<string>('JWT_ACCESS_SECRET') || 'default_jwt_access_secret_key_change_me',
         signOptions: {
-          expiresIn: configService.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '15m',
+          expiresIn: configService.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '7d',
         },
       }),
     }),

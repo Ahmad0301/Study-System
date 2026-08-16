@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: study-system-backend
+    env: node
+    rootDir: Backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production

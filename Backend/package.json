@@ -26,14 +26,14 @@
     "nodemailer": "^9.0.3",
     "pdf-parse": "^1.1.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "@nestjs/cli": "^10.4.9",
+    "typescript": "^5.7.3"
   },
   "devDependencies": {
-    "@nestjs/cli": "^10.4.9",
     "@types/bcrypt": "^5.0.2",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.7",
-    "@types/pdf-parse": "^1.1.5",
-    "typescript": "^5.7.3"
+    "@types/pdf-parse": "^1.1.5"
   }
 }

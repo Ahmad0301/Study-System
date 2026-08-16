@@ -36,6 +36,14 @@ export class AuthService {
     private cloudinaryService: CloudinaryService,
   ) {}
 
+  private isSmtpConfigured(): boolean {
+    return !!(
+      this.configService.get<string>('SMTP_HOST') &&
+      this.configService.get<string>('SMTP_USER') &&
+      this.configService.get<string>('SMTP_PASS')
+    );
+  }
+
   // ---------- SIGN UP ----------
   async signUp(dto: SignUpDto) {
     const existingUser = await this.userModel.findOne({ email: dto.email });
@@ -49,22 +57,27 @@ export class AuthService {
       name: dto.name,
       email: dto.email,
       password: hashedPassword,
+      emailVerified: !this.isSmtpConfigured(), // Auto-verify if SMTP is not configured
     });
 
     // Generate verification token and send email (wrapped in try/catch so email failure never crashes signup)
-    try {
-      const { token, hashedToken, expires } = await this.generateVerificationToken();
-      user.verificationToken = hashedToken;
-      user.verificationTokenExpires = expires;
-      await user.save();
-      await this.sendVerificationEmail(user.email, token);
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('Email verification error during signup:', err);
+    if (this.isSmtpConfigured()) {
+      try {
+        const { token, hashedToken, expires } = await this.generateVerificationToken();
+        user.verificationToken = hashedToken;
+        user.verificationTokenExpires = expires;
+        await user.save();
+        await this.sendVerificationEmail(user.email, token);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('Email verification error during signup:', err);
+      }
     }
 
     return {
-      message: 'Account created successfully. Please verify your email before signing in.',
+      message: this.isSmtpConfigured()
+        ? 'Account created successfully. Please verify your email before signing in.'
+        : 'Account created successfully. You can now sign in.',
       user: this.sanitizeUser(user),
     };
   }
@@ -76,7 +89,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    if (!user.emailVerified) {
+    if (this.isSmtpConfigured() && !user.emailVerified) {
       throw new UnauthorizedException('Email not verified. Please verify your email before signing in.');
     }
 

@@ -122,13 +122,17 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    if (this.isSmtpConfigured() && !user.emailVerified) {
-      throw new UnauthorizedException('Email not verified. Please verify your email before signing in.');
-    }
-
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid email or password');
+    }
+
+    // Auto-verify account upon successful password verification
+    if (!user.emailVerified) {
+      user.emailVerified = true;
+      user.verificationToken = null;
+      user.verificationTokenExpires = null;
+      await user.save();
     }
 
     const tokens = await this.generateTokens(user._id.toString(), user.email);

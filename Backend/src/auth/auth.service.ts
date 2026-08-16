@@ -53,26 +53,20 @@ export class AuthService {
       return null;
     }
 
+    const port = Number(this.configService.get<string>('SMTP_PORT') || 465);
     const isGmail = smtpHost.toLowerCase().includes('gmail');
+    const isSecure = port === 465 || isGmail;
 
-    if (isGmail) {
-      return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-      });
-    }
-
-    const port = Number(this.configService.get<string>('SMTP_PORT') || 587);
     return nodemailer.createTransport({
-      host: smtpHost,
-      port,
-      secure: port === 465,
+      host: isGmail ? 'smtp.gmail.com' : smtpHost,
+      port: isGmail ? 465 : port,
+      secure: isSecure,
       auth: {
         user: smtpUser,
         pass: smtpPass,
+      },
+      tls: {
+        rejectUnauthorized: false,
       },
     });
   }
@@ -90,27 +84,27 @@ export class AuthService {
       name: dto.name,
       email: dto.email,
       password: hashedPassword,
-      emailVerified: !this.isSmtpConfigured(), // Auto-verify if SMTP is not configured
+      emailVerified: false, // Strictly require email verification link click
     });
 
-    // Generate verification token and send email (wrapped in try/catch so email failure never crashes signup)
-    if (this.isSmtpConfigured()) {
-      try {
-        const { token, hashedToken, expires } = await this.generateVerificationToken();
-        user.verificationToken = hashedToken;
-        user.verificationTokenExpires = expires;
-        await user.save();
-        await this.sendVerificationEmail(user.email, token);
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error('Email verification error during signup:', err);
-      }
+    // Generate verification token and send email
+    const { token, hashedToken, expires } = await this.generateVerificationToken();
+    user.verificationToken = hashedToken;
+    user.verificationTokenExpires = expires;
+    await user.save();
+
+    try {
+      await this.sendVerificationEmail(user.email, token);
+    } catch (err: any) {
+      // eslint-disable-next-line no-console
+      console.error('Email verification delivery failed during signup:', err?.message || err);
+      throw new InternalServerErrorException(
+        'Account created, but failed to send verification email. Please try resending verification.',
+      );
     }
 
     return {
-      message: this.isSmtpConfigured()
-        ? 'Account created successfully. Please verify your email before signing in.'
-        : 'Account created successfully. You can now sign in.',
+      message: 'Account created successfully. Please check your email inbox to verify your account before signing in.',
       user: this.sanitizeUser(user),
     };
   }
@@ -127,12 +121,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    // Auto-verify account upon successful password verification
+    // Strictly enforce email verification before issuing tokens
     if (!user.emailVerified) {
-      user.emailVerified = true;
-      user.verificationToken = null;
-      user.verificationTokenExpires = null;
-      await user.save();
+      throw new UnauthorizedException(
+        'Email not verified. Please check your email inbox and click the verification link before signing in.',
+      );
     }
 
     const tokens = await this.generateTokens(user._id.toString(), user.email);
@@ -373,6 +366,7 @@ export class AuthService {
           from: `"StudyAI Assistant" <${smtpUser}>`,
           to: email,
           subject: 'Verify your email — StudyAI Assistant',
+          text: `Welcome to StudyAI Assistant! Please verify your email by opening this link: ${verificationUrl}`,
           html: emailHtml,
         });
         // eslint-disable-next-line no-console
@@ -389,14 +383,16 @@ export class AuthService {
           from: '"StudyAI Assistant" <noreply@studyai.com>',
           to: email,
           subject: 'Verify your email — StudyAI Assistant',
+          text: `Welcome to StudyAI Assistant! Please verify your email by opening this link: ${verificationUrl}`,
           html: emailHtml,
         });
         // eslint-disable-next-line no-console
         console.log(`📧 Test verification email sent: ${nodemailer.getTestMessageUrl(info)}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       // eslint-disable-next-line no-console
-      console.error('Failed to send verification email:', err);
+      console.error('Failed to send verification email:', err?.message || err);
+      throw err;
     }
   }
 

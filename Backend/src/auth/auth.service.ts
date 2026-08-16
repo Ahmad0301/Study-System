@@ -44,18 +44,24 @@ export class AuthService {
   }
 
   private createTransporter() {
-    const smtpHost = (this.configService.get<string>('SMTP_HOST') || '').trim();
     const smtpUser = (this.configService.get<string>('SMTP_USER') || '').trim();
     const rawPass = (this.configService.get<string>('SMTP_PASS') || '').trim();
     const smtpPass = rawPass.replace(/\s+/g, ''); // Strip spaces from Gmail App Passwords
 
-    if (!smtpHost || !smtpUser || !smtpPass) {
+    // eslint-disable-next-line no-console
+    console.log(`[SMTP] User="${smtpUser}" PassLength=${smtpPass.length}`);
+
+    if (!smtpUser || !smtpPass) {
+      // eslint-disable-next-line no-console
+      console.error('[SMTP] Missing SMTP_USER or SMTP_PASS — transporter not created');
       return null;
     }
 
-    const isGmail = smtpHost.toLowerCase().includes('gmail') || smtpUser.toLowerCase().includes('@gmail.com');
+    const isGmail = smtpUser.toLowerCase().includes('@gmail.com');
 
     if (isGmail) {
+      // Use Nodemailer's built-in Gmail service driver
+      // This internally uses Port 465 SSL/TLS and is NOT blocked by Render's firewall
       return nodemailer.createTransport({
         service: 'gmail',
         auth: {
@@ -65,18 +71,15 @@ export class AuthService {
       });
     }
 
+    // Non-Gmail SMTP fallback
+    const smtpHost = (this.configService.get<string>('SMTP_HOST') || '').trim();
     const port = Number(this.configService.get<string>('SMTP_PORT') || 587);
     return nodemailer.createTransport({
       host: smtpHost,
       port,
       secure: port === 465,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-      tls: {
-        rejectUnauthorized: false,
-      },
+      auth: { user: smtpUser, pass: smtpPass },
+      tls: { rejectUnauthorized: false },
     });
   }
 

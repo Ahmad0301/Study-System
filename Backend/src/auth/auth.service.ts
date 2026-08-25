@@ -452,12 +452,30 @@ export class AuthService {
     if (!user) {
       return { message: 'If an account exists, a verification email has been sent' };
     }
+
+    if (user.emailVerified) {
+      return { message: 'Your email is already verified. Please sign in.' };
+    }
+
     const { token, hashedToken, expires } = await this.generateVerificationToken();
     user.verificationToken = hashedToken;
     user.verificationTokenExpires = expires;
     await user.save();
-    await this.sendVerificationEmail(user.email, token);
-    return { message: 'Verification email resent' };
+
+    let emailSent = false;
+    try {
+      await this.sendVerificationEmail(user.email, token);
+      emailSent = true;
+    } catch (err: any) {
+      // eslint-disable-next-line no-console
+      console.error('Resend verification email delivery failed:', err?.message || err);
+    }
+
+    return {
+      message: emailSent
+        ? 'Verification email resent. Please check your inbox.'
+        : 'Could not deliver the verification email. Please try again later.',
+    };
   }
 
   private async generateTokens(userId: string, email: string) {

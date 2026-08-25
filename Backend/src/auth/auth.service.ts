@@ -109,6 +109,28 @@ export class AuthService {
   async signUp(dto: SignUpDto) {
     const existingUser = await this.userModel.findOne({ email: dto.email });
     if (existingUser) {
+      // If the account exists but email is not yet verified, resend the verification
+      // email and return a helpful message instead of a hard 409 conflict error
+      if (!existingUser.emailVerified) {
+        const { token, hashedToken, expires } = await this.generateVerificationToken();
+        existingUser.verificationToken = hashedToken;
+        existingUser.verificationTokenExpires = expires;
+        await existingUser.save();
+
+        try {
+          await this.sendVerificationEmail(existingUser.email, token);
+        } catch (err: any) {
+          // eslint-disable-next-line no-console
+          console.error('Failed to resend verification during signup retry:', err?.message || err);
+        }
+
+        return {
+          message:
+            'An account with this email already exists but has not been verified yet. We have resent the verification email — please check your inbox.',
+          user: this.sanitizeUser(existingUser),
+        };
+      }
+
       throw new ConflictException('An account with this email already exists');
     }
 

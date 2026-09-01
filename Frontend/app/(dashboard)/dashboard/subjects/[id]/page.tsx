@@ -31,6 +31,8 @@ import { subjectService } from "@/lib/services/subjectService";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { GlobalPageLoader } from "@/components/ui/GlobalPageLoader";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
 export default function SubjectDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -100,7 +102,7 @@ export default function SubjectDetailPage() {
       const rawUrl = previewFile.fileUrl || "";
       const fileUrl = rawUrl.startsWith("http")
         ? rawUrl
-        : `http://localhost:3001${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`;
+        : `${API_BASE}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`;
 
       const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
 
@@ -268,7 +270,7 @@ export default function SubjectDetailPage() {
   const handleDownload = async (e: React.MouseEvent, file: any) => {
     e.preventDefault();
     e.stopPropagation();
-    const fileUrl = file.fileUrl ? `http://localhost:3001${file.fileUrl}` : null;
+    const fileUrl = file.fileUrl ? `${API_BASE}${file.fileUrl}` : null;
     if (!fileUrl) return;
 
     try {
@@ -630,7 +632,7 @@ export default function SubjectDetailPage() {
                 previewFile.name?.toLowerCase().endsWith(".pdf") || previewFile.type === "pdf" ? (
                   <iframe
                     key={`${previewFile.id || previewFile.fileUrl}-${previewPage}`}
-                    src={`http://localhost:3001${previewFile.fileUrl}#page=${previewPage}`}
+                    src={`${API_BASE}${previewFile.fileUrl}#page=${previewPage}`}
                     className="w-full h-full rounded-2xl bg-white border border-slate-200 dark:border-slate-800 shadow-xl"
                     title={previewFile.name}
                   />

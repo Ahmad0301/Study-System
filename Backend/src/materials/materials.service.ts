@@ -4,7 +4,7 @@ import { Model, Types } from 'mongoose';
 import { Material, MaterialDocument } from './schemas/material.schema';
 import { Subject, SubjectDocument } from '../subjects/schemas/subject.schema';
 import { ActivitiesService } from '../activities/activities.service';
-import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { CloudinaryService, MulterFile } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class MaterialsService {
@@ -21,7 +21,7 @@ export class MaterialsService {
     userId: string,
     subjectId: string,
     name: string,
-    file: Express.Multer.File,
+    file: MulterFile,
   ): Promise<Material> {
     const sizeInMb = file ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : '1.0 MB';
     const ext = file?.originalname?.split('.').pop()?.toLowerCase() || 'pdf';

@@ -3,6 +3,15 @@ import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary, UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
 import { Readable } from 'stream';
 
+export interface MulterFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  buffer: Buffer;
+  size: number;
+}
+
 @Injectable()
 export class CloudinaryService {
   constructor(private configService: ConfigService) {}
@@ -48,7 +57,7 @@ export class CloudinaryService {
   }
 
   async uploadDocument(
-    file: Express.Multer.File,
+    file: MulterFile,
     folder = 'study-assistant/documents',
   ): Promise<UploadApiResponse> {
     this.configure();

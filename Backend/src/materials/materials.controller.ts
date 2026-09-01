@@ -17,6 +17,7 @@ import { memoryStorage } from 'multer';
 import { Request } from 'express';
 import { MaterialsService } from './materials.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { MulterFile } from '../cloudinary/cloudinary.service';
 
 @Controller('materials')
 @UseGuards(JwtAuthGuard)
@@ -35,7 +36,7 @@ export class MaterialsController {
     @Req() req: Request,
     @Body('subjectId') subjectId: string,
     @Body('name') name: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: MulterFile,
   ) {
     const userId = (req as any).user.sub;
     return this.materialsService.create(userId, subjectId, name, file);

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Material, MaterialDocument } from './schemas/material.schema';
@@ -24,7 +24,7 @@ export class MaterialsService {
     file: MulterFile,
   ): Promise<Material> {
     if (!file) {
-      throw new Error('File is missing in the request');
+      throw new BadRequestException('File is missing in the request');
     }
     const sizeInMb = file ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : '1.0 MB';
     const ext = file?.originalname?.split('.').pop()?.toLowerCase() || 'pdf';
@@ -51,7 +51,7 @@ export class MaterialsService {
       cloudinaryResult = await this.cloudinaryService.uploadDocument(file);
     } catch (err: any) {
       console.error('Cloudinary upload error:', err);
-      throw new Error(`Cloudinary upload failed: ${err.message}`);
+      throw new InternalServerErrorException(`Cloudinary upload failed: ${err.message}`);
     }
 
     const newMaterial = new this.materialModel({

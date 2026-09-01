@@ -23,6 +23,9 @@ export class MaterialsService {
     name: string,
     file: MulterFile,
   ): Promise<Material> {
+    if (!file) {
+      throw new Error('File is missing in the request');
+    }
     const sizeInMb = file ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : '1.0 MB';
     const ext = file?.originalname?.split('.').pop()?.toLowerCase() || 'pdf';
     const targetName = name || file?.originalname || 'Uploaded_Document.pdf';
@@ -43,7 +46,13 @@ export class MaterialsService {
     }
 
     // Upload file buffer to Cloudinary
-    const cloudinaryResult = await this.cloudinaryService.uploadDocument(file);
+    let cloudinaryResult;
+    try {
+      cloudinaryResult = await this.cloudinaryService.uploadDocument(file);
+    } catch (err: any) {
+      console.error('Cloudinary upload error:', err);
+      throw new Error(`Cloudinary upload failed: ${err.message}`);
+    }
 
     const newMaterial = new this.materialModel({
       name: targetName,

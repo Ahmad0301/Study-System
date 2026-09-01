@@ -13,7 +13,6 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
 import { Request } from 'express';
 import { MaterialsService } from './materials.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -28,7 +27,6 @@ export class MaterialsController {
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: memoryStorage(), // keeps file in RAM buffer → passed to Cloudinary
       limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
     }),
   )

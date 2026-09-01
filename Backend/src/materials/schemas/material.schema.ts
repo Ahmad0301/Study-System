@@ -17,6 +17,9 @@ export class Material {
   @Prop({ required: true })
   fileUrl: string;
 
+  @Prop({ default: null })
+  cloudinaryPublicId: string;
+
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Subject', required: true })
   subjectId: MongooseSchema.Types.ObjectId;
 

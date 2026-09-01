@@ -13,8 +13,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { memoryStorage } from 'multer';
 import { Request } from 'express';
 import { MaterialsService } from './materials.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -28,21 +27,15 @@ export class MaterialsController {
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (req, file, callback) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname);
-          callback(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-        },
-      }),
+      storage: memoryStorage(), // keeps file in RAM buffer → passed to Cloudinary
+      limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
     }),
   )
   uploadFile(
     @Req() req: Request,
     @Body('subjectId') subjectId: string,
     @Body('name') name: string,
-    @UploadedFile() file: any,
+    @UploadedFile() file: Express.Multer.File,
   ) {
     const userId = (req as any).user.sub;
     return this.materialsService.create(userId, subjectId, name, file);

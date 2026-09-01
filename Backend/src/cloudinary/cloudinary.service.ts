@@ -47,6 +47,36 @@ export class CloudinaryService {
     });
   }
 
+  async uploadDocument(
+    file: Express.Multer.File,
+    folder = 'study-assistant/documents',
+  ): Promise<UploadApiResponse> {
+    this.configure();
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder,
+          resource_type: 'raw',   // required for PDF / DOCX
+          use_filename: true,
+          unique_filename: true,
+        },
+        (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
+          if (error) {
+            return reject(
+              new InternalServerErrorException(`Cloudinary document upload failed: ${error.message}`),
+            );
+          }
+          if (!result) {
+            return reject(new InternalServerErrorException('Cloudinary upload returned empty result'));
+          }
+          resolve(result);
+        },
+      );
+
+      Readable.from(file.buffer).pipe(uploadStream);
+    });
+  }
+
   async deleteImage(publicId: string): Promise<any> {
     if (!publicId) return;
     this.configure();
@@ -54,6 +84,16 @@ export class CloudinaryService {
       return await cloudinary.uploader.destroy(publicId);
     } catch (err: any) {
       console.error(`Failed to delete Cloudinary image (${publicId}):`, err);
+    }
+  }
+
+  async deleteFile(publicId: string, resourceType: 'image' | 'raw' = 'raw'): Promise<any> {
+    if (!publicId) return;
+    this.configure();
+    try {
+      return await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+    } catch (err: any) {
+      console.error(`Failed to delete Cloudinary file (${publicId}):`, err);
     }
   }
 }

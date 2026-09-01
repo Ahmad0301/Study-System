@@ -33,6 +33,13 @@ import { GlobalPageLoader } from "@/components/ui/GlobalPageLoader";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
+// Returns a fully-qualified URL regardless of whether fileUrl is already absolute
+// (Cloudinary HTTPS) or a legacy relative /uploads/ path.
+function resolveFileUrl(fileUrl: string, base: string): string {
+  if (!fileUrl) return "";
+  return fileUrl.startsWith("http") ? fileUrl : `${base}${fileUrl.startsWith("/") ? "" : "/"}${fileUrl}`;
+}
+
 export default function SubjectDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -100,9 +107,7 @@ export default function SubjectDetailPage() {
       setLoadingDocx(true);
       setDocxHtml("");
       const rawUrl = previewFile.fileUrl || "";
-      const fileUrl = rawUrl.startsWith("http")
-        ? rawUrl
-        : `${API_BASE}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`;
+      const fileUrl = resolveFileUrl(rawUrl, API_BASE);
 
       const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
 
@@ -270,7 +275,7 @@ export default function SubjectDetailPage() {
   const handleDownload = async (e: React.MouseEvent, file: any) => {
     e.preventDefault();
     e.stopPropagation();
-    const fileUrl = file.fileUrl ? `${API_BASE}${file.fileUrl}` : null;
+    const fileUrl = file.fileUrl ? resolveFileUrl(file.fileUrl, API_BASE) : null;
     if (!fileUrl) return;
 
     try {
@@ -632,7 +637,7 @@ export default function SubjectDetailPage() {
                 previewFile.name?.toLowerCase().endsWith(".pdf") || previewFile.type === "pdf" ? (
                   <iframe
                     key={`${previewFile.id || previewFile.fileUrl}-${previewPage}`}
-                    src={`${API_BASE}${previewFile.fileUrl}#page=${previewPage}`}
+                    src={`${resolveFileUrl(previewFile.fileUrl, API_BASE)}#page=${previewPage}`}
                     className="w-full h-full rounded-2xl bg-white border border-slate-200 dark:border-slate-800 shadow-xl"
                     title={previewFile.name}
                   />

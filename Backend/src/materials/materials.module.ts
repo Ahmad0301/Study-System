@@ -6,6 +6,7 @@ import { MaterialsService } from './materials.service';
 import { Material, MaterialSchema } from './schemas/material.schema';
 import { Subject, SubjectSchema } from '../subjects/schemas/subject.schema';
 import { ActivitiesModule } from '../activities/activities.module';
+import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { ActivitiesModule } from '../activities/activities.module';
     ]),
     JwtModule.register({}),
     ActivitiesModule,
+    CloudinaryModule,
   ],
   controllers: [MaterialsController],
   providers: [MaterialsService],

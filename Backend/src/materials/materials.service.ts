@@ -1,11 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { join } from 'path';
-import { existsSync, unlinkSync } from 'fs';
 import { Material, MaterialDocument } from './schemas/material.schema';
 import { Subject, SubjectDocument } from '../subjects/schemas/subject.schema';
 import { ActivitiesService } from '../activities/activities.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class MaterialsService {
@@ -15,17 +14,17 @@ export class MaterialsService {
     @InjectModel(Subject.name)
     private subjectModel: Model<SubjectDocument>,
     private activitiesService: ActivitiesService,
+    private cloudinaryService: CloudinaryService,
   ) {}
 
   async create(
     userId: string,
     subjectId: string,
     name: string,
-    file: any,
+    file: Express.Multer.File,
   ): Promise<Material> {
     const sizeInMb = file ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : '1.0 MB';
     const ext = file?.originalname?.split('.').pop()?.toLowerCase() || 'pdf';
-
     const targetName = name || file?.originalname || 'Uploaded_Document.pdf';
 
     // Delete existing material with the same name if present
@@ -36,23 +35,22 @@ export class MaterialsService {
     });
 
     if (existing) {
-      if (existing.fileUrl && existing.fileUrl.startsWith('/uploads/')) {
-        const filename = existing.fileUrl.replace('/uploads/', '');
-        const filePath = join(process.cwd(), 'uploads', filename);
-        if (existsSync(filePath)) {
-          try {
-            unlinkSync(filePath);
-          } catch (_) {}
-        }
+      // Remove old file from Cloudinary if it has a publicId
+      if (existing.cloudinaryPublicId) {
+        await this.cloudinaryService.deleteFile(existing.cloudinaryPublicId, 'raw');
       }
       await this.materialModel.deleteOne({ _id: existing._id });
     }
+
+    // Upload file buffer to Cloudinary
+    const cloudinaryResult = await this.cloudinaryService.uploadDocument(file);
 
     const newMaterial = new this.materialModel({
       name: targetName,
       size: sizeInMb,
       type: ext,
-      fileUrl: file?.filename ? `/uploads/${file.filename}` : '/uploads/default.pdf',
+      fileUrl: cloudinaryResult.secure_url,           // permanent HTTPS Cloudinary URL
+      cloudinaryPublicId: cloudinaryResult.public_id, // stored for deletion later
       subjectId: new Types.ObjectId(subjectId),
       userId: new Types.ObjectId(userId),
     });
@@ -95,15 +93,9 @@ export class MaterialsService {
       throw new NotFoundException('Material not found');
     }
 
-    // Delete physical file from disk if it exists
-    if (material.fileUrl && material.fileUrl.startsWith('/uploads/')) {
-      const filename = material.fileUrl.replace('/uploads/', '');
-      const filePath = join(process.cwd(), 'uploads', filename);
-      if (existsSync(filePath)) {
-        try {
-          unlinkSync(filePath);
-        } catch (_) {}
-      }
+    // Delete file from Cloudinary
+    if (material.cloudinaryPublicId) {
+      await this.cloudinaryService.deleteFile(material.cloudinaryPublicId, 'raw');
     }
 
     await this.materialModel.deleteOne({ _id: new Types.ObjectId(id) });

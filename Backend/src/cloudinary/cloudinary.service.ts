@@ -61,13 +61,24 @@ export class CloudinaryService {
     folder = 'study-assistant/documents',
   ): Promise<UploadApiResponse> {
     this.configure();
+
+    const originalName = file?.originalname || 'document.pdf';
+    const ext = originalName.split('.').pop()?.toLowerCase() || 'pdf';
+    const isImage = ['jpg', 'jpeg', 'png', 'webp'].includes(ext);
+    const resourceType = isImage ? 'image' : 'raw';
+
+    const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || 'file';
+    const safeBaseName = baseName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const publicId = `${safeBaseName}_${Date.now()}.${ext}`;
+
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder,
-          resource_type: 'raw',   // required for PDF / DOCX
+          resource_type: resourceType,
+          public_id: publicId,
           use_filename: true,
-          unique_filename: true,
+          unique_filename: false,
         },
         (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
           if (error) {

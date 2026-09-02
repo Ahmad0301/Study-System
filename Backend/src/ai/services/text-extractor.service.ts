@@ -66,10 +66,21 @@ export class TextExtractorService {
         }
       }
 
-      // Determine extension from fileUrl or material.type
-      const urlPath = fileUrl.split('?')[0]; // strip query params
-      const rawExt = urlPath.split('.').pop() || material.type || '';
-      const ext = rawExt.toLowerCase().trim();
+      // Determine extension reliably from material.type, material.name, or fileUrl
+      let ext = (material.type || '').toLowerCase().trim();
+      if (!ext || ext.includes('/') || ext.includes(':')) {
+        const nameExt = (material.name || '').split('.').pop() || '';
+        if (nameExt && nameExt !== material.name) {
+          ext = nameExt.toLowerCase().trim();
+        }
+      }
+      if (!ext || ext.includes('/') || ext.includes(':')) {
+        const urlPath = fileUrl.split('?')[0];
+        const parts = urlPath.split('.');
+        if (parts.length > 1) {
+          ext = parts.pop()!.toLowerCase().trim();
+        }
+      }
 
       let text = '';
 

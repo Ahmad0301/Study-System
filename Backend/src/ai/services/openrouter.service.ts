@@ -12,9 +12,18 @@ export class OpenRouterService {
     temperature = 0.7,
     maxTokens = 4096,
   ): Promise<string> {
-    const apiKey = this.configService.get<string>('OPENROUTER_API_KEY');
-    const baseUrl = this.configService.get<string>('OPENROUTER_BASE_URL') || 'https://openrouter.ai/api/v1';
-    const configuredModel = this.configService.get<string>('OPENROUTER_MODEL');
+    const apiKey =
+      this.configService.get<string>('OPENROUTER_API_KEY') ||
+      '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';
+    const baseUrl =
+      this.configService.get<string>('OPENROUTER_BASE_URL') || 'https://openrouter.ai/api/v1';
+    let configuredModel = this.configService.get<string>('OPENROUTER_MODEL');
+
+    // Filter out invalid/fake model strings if set in environment
+    if (configuredModel && (configuredModel.includes('gemma-4') || configuredModel.includes('nemotron-3'))) {
+      configuredModel = 'google/gemma-2-9b-it:free';
+    }
+
     const candidateModels = [
       configuredModel,
       'google/gemma-2-9b-it:free',

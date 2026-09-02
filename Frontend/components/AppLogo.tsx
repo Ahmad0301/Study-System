@@ -61,13 +61,13 @@ export function ProjectLogoIcon({
         borderRadius: Math.max(6, size * 0.22)
       }}
     >
-      {/* We use object-cover and object-left to dynamically crop just the graduation cap icon from the provided image */}
+      {/* We use object-cover to nicely frame the perfectly square icon image */}
       <Image
-        src="/logo.png"
+        src="/icon.png"
         alt="AI Study System Icon"
         fill
         sizes={`${size}px`}
-        className={`object-cover object-left ${variant === "white" ? "shadow-sm ring-1 ring-white/20" : "shadow-md ring-1 ring-slate-900/5"}`}
+        className={`object-cover ${variant === "white" ? "shadow-sm ring-1 ring-white/20" : "shadow-md ring-1 ring-slate-900/5"}`}
       />
     </div>
   );

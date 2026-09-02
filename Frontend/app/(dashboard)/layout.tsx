@@ -132,7 +132,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     fetchedIds.current.add(subjectId);
     const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
     if (!token) return;
-    fetch(`http://localhost:3001/subjects/${subjectId}`, {
+    fetch(`${API_URL}/subjects/${subjectId}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())

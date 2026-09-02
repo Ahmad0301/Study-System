@@ -40,6 +40,10 @@ export class AiService {
     subjectId: string,
     fileIds?: string[],
   ): Promise<MaterialDocument[]> {
+    if (!subjectId || !Types.ObjectId.isValid(subjectId)) {
+      throw new BadRequestException('Invalid or missing subject ID');
+    }
+
     const subject = await this.subjectModel.findOne({
       _id: new Types.ObjectId(subjectId),
       userId: new Types.ObjectId(userId),
@@ -55,12 +59,15 @@ export class AiService {
     };
 
     if (fileIds && fileIds.length > 0) {
-      query._id = { $in: fileIds.map((id) => new Types.ObjectId(id)) };
+      const validFileIds = fileIds.filter((id) => id && Types.ObjectId.isValid(id));
+      if (validFileIds.length > 0) {
+        query._id = { $in: validFileIds.map((id) => new Types.ObjectId(id)) };
+      }
     }
 
     const materials = await this.materialModel.find(query).exec();
     if (!materials || materials.length === 0) {
-      throw new BadRequestException('No materials found for the selected subject and files');
+      throw new BadRequestException('No course materials found for the selected subject. Please upload a PDF, DOCX, or TXT file first.');
     }
 
     return materials;

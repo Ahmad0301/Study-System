@@ -17,10 +17,11 @@ export class OpenRouterService {
     const configuredModel = this.configService.get<string>('OPENROUTER_MODEL');
     const candidateModels = [
       configuredModel,
-      'google/gemma-4-31b-it:free',
-      'google/gemma-4-26b-a4b-it:free',
-      'nvidia/nemotron-3-nano-30b-a3b:free',
-      'liquid/lfm-2.5-2.6b:free',
+      'google/gemma-2-9b-it:free',
+      'meta-llama/llama-3.3-70b-instruct:free',
+      'qwen/qwen-2.5-72b-instruct:free',
+      'mistralai/mistral-7b-instruct:free',
+      'deepseek/deepseek-r1:free',
     ].filter((m, i, arr): m is string => Boolean(m) && arr.indexOf(m) === i);
 
     if (!apiKey) {

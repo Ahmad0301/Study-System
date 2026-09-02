@@ -19,9 +19,14 @@ export class TextExtractorService {
    * Fetches a file from a URL (Cloudinary HTTPS or any HTTP URL) into a Buffer.
    */
   private async fetchFileBuffer(url: string): Promise<Buffer> {
-    const res = await fetch(url);
+    let targetUrl = url;
+    if (targetUrl.startsWith('/')) {
+      const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3005}`;
+      targetUrl = `${backendUrl.replace(/\/+$/, '')}${targetUrl}`;
+    }
+    const res = await fetch(targetUrl);
     if (!res.ok) {
-      throw new Error(`Failed to fetch file: HTTP ${res.status} ${res.statusText}`);
+      throw new Error(`Failed to fetch file from ${targetUrl}: HTTP ${res.status} ${res.statusText}`);
     }
     const arrayBuffer = await res.arrayBuffer();
     return Buffer.from(arrayBuffer);

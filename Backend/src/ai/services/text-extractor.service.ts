@@ -18,19 +18,13 @@ export class TextExtractorService {
   /**
    * Fetches a file from a URL (Cloudinary HTTPS or any HTTP URL) into a Buffer.
    */
-  private fetchFileBuffer(url: string): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      const client = url.startsWith('https') ? https : http;
-      client.get(url, (res) => {
-        if (res.statusCode && res.statusCode >= 400) {
-          return reject(new Error(`Failed to fetch file: HTTP ${res.statusCode}`));
-        }
-        const chunks: Buffer[] = [];
-        res.on('data', (chunk: Buffer) => chunks.push(chunk));
-        res.on('end', () => resolve(Buffer.concat(chunks)));
-        res.on('error', reject);
-      }).on('error', reject);
-    });
+  private async fetchFileBuffer(url: string): Promise<Buffer> {
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch file: HTTP ${res.status} ${res.statusText}`);
+    }
+    const arrayBuffer = await res.arrayBuffer();
+    return Buffer.from(arrayBuffer);
   }
 
   async extractTextFromMaterials(materials: MaterialDocument[]): Promise<string> {

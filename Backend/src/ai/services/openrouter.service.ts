@@ -17,20 +17,13 @@ export class OpenRouterService {
       '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';
     const baseUrl =
       this.configService.get<string>('OPENROUTER_BASE_URL') || 'https://openrouter.ai/api/v1';
-    let configuredModel = this.configService.get<string>('OPENROUTER_MODEL');
-
-    // Filter out invalid/fake model strings if set in environment
-    if (configuredModel && (configuredModel.includes('gemma-4') || configuredModel.includes('nemotron-3'))) {
-      configuredModel = 'google/gemma-2-9b-it:free';
-    }
-
     const candidateModels = [
+      'openrouter/free',
       configuredModel,
-      'google/gemma-2-9b-it:free',
-      'meta-llama/llama-3.3-70b-instruct:free',
-      'qwen/qwen-2.5-72b-instruct:free',
-      'mistralai/mistral-7b-instruct:free',
-      'deepseek/deepseek-r1:free',
+      'google/gemma-4-31b-it:free',
+      'google/gemma-4-26b-a4b-it:free',
+      'liquid/lfm-2.5-2.6b:free',
+      'z-ai/glm-5.2:free',
     ].filter((m, i, arr): m is string => Boolean(m) && arr.indexOf(m) === i);
 
     if (!apiKey) {

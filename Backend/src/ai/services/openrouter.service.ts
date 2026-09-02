@@ -17,6 +17,7 @@ export class OpenRouterService {
       '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';
     const baseUrl =
       this.configService.get<string>('OPENROUTER_BASE_URL') || 'https://openrouter.ai/api/v1';
+    const configuredModel = this.configService.get<string>('OPENROUTER_MODEL');
     const candidateModels = [
       'openrouter/free',
       configuredModel,

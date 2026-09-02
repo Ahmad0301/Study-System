@@ -12,9 +12,7 @@ export class OpenRouterService {
     temperature = 0.7,
     maxTokens = 4096,
   ): Promise<string> {
-    const apiKey =
-      this.configService.get<string>('OPENROUTER_API_KEY') ||
-      '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';
+    const apiKey = this.configService.get<string>('OPENROUTER_API_KEY');
     const baseUrl =
       this.configService.get<string>('OPENROUTER_BASE_URL') || 'https://openrouter.ai/api/v1';
     const configuredModel = this.configService.get<string>('OPENROUTER_MODEL');
@@ -28,7 +26,10 @@ export class OpenRouterService {
     ].filter((m, i, arr): m is string => Boolean(m) && arr.indexOf(m) === i);
 
     if (!apiKey) {
-      this.logger.warn('OPENROUTER_API_KEY is missing in .env');
+      this.logger.error('OPENROUTER_API_KEY is missing in environment configuration.');
+      throw new InternalServerErrorException(
+        'AI service configuration missing: OPENROUTER_API_KEY is not set.',
+      );
     }
 
     let lastError = '';

@@ -96,7 +96,10 @@ export class CloudinaryService {
     }
   }
 
-  async deleteFile(publicId: string, resourceType: 'image' | 'raw' = 'raw'): Promise<any> {
+  async deleteFile(
+    publicId: string,
+    resourceType: 'image' | 'raw' | 'video' | string = 'raw',
+  ): Promise<any> {
     if (!publicId) return;
     this.configure();
     try {

@@ -53,10 +53,14 @@ async function bootstrap() {
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
       const cleanOrigin = origin.trim().replace(/\/+$/, '');
-      if (allowedOrigins.includes(cleanOrigin) || cleanOrigin.endsWith('.vercel.app')) {
+      if (
+        allowedOrigins.includes(cleanOrigin) ||
+        cleanOrigin.endsWith('.vercel.app') ||
+        cleanOrigin.endsWith('.onrender.com')
+      ) {
         return callback(null, true);
       }
-      return callback(null, true);
+      return callback(new Error(`CORS policy: Origin ${origin} not allowed`), false);
     },
     credentials: true,
   });

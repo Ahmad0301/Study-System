@@ -20,6 +20,9 @@ export class Material {
   @Prop({ default: null })
   cloudinaryPublicId: string;
 
+  @Prop({ default: 'raw' })
+  resourceType: string;
+
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Subject', required: true })
   subjectId: MongooseSchema.Types.ObjectId;
 

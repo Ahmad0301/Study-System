@@ -40,7 +40,8 @@ export class MaterialsService {
     if (existing) {
       // Remove old file from Cloudinary if it has a publicId
       if (existing.cloudinaryPublicId) {
-        await this.cloudinaryService.deleteFile(existing.cloudinaryPublicId, 'raw');
+        const resType = existing.resourceType || 'raw';
+        await this.cloudinaryService.deleteFile(existing.cloudinaryPublicId, resType);
       }
       await this.materialModel.deleteOne({ _id: existing._id });
     }
@@ -60,6 +61,7 @@ export class MaterialsService {
       type: ext,
       fileUrl: cloudinaryResult.secure_url,           // permanent HTTPS Cloudinary URL
       cloudinaryPublicId: cloudinaryResult.public_id, // stored for deletion later
+      resourceType: cloudinaryResult.resource_type || 'raw',
       subjectId: new Types.ObjectId(subjectId),
       userId: new Types.ObjectId(userId),
     });
@@ -104,7 +106,8 @@ export class MaterialsService {
 
     // Delete file from Cloudinary
     if (material.cloudinaryPublicId) {
-      await this.cloudinaryService.deleteFile(material.cloudinaryPublicId, 'raw');
+      const resType = material.resourceType || 'raw';
+      await this.cloudinaryService.deleteFile(material.cloudinaryPublicId, resType);
     }
 
     await this.materialModel.deleteOne({ _id: new Types.ObjectId(id) });

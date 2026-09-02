@@ -28,7 +28,15 @@ export class TextExtractorService {
     if (!res.ok) {
       throw new Error(`Failed to fetch file from ${targetUrl}: HTTP ${res.status} ${res.statusText}`);
     }
+    const contentLength = Number(res.headers.get('content-length') || 0);
+    const MAX_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB limit
+    if (contentLength > MAX_SIZE_BYTES) {
+      throw new BadRequestException('File size exceeds the 15 MB limit for AI text processing.');
+    }
     const arrayBuffer = await res.arrayBuffer();
+    if (arrayBuffer.byteLength > MAX_SIZE_BYTES) {
+      throw new BadRequestException('File size exceeds the 15 MB limit for AI text processing.');
+    }
     return Buffer.from(arrayBuffer);
   }
 

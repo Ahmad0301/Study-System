@@ -115,33 +115,30 @@ export class SubjectsService {
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - 7);
 
-    const totalSubjects = await this.subjectModel.countDocuments({ userId: userObjectId });
-    let subjectsThisMonth = await this.subjectModel.countDocuments({
-      userId: userObjectId,
-      createdAt: { $gte: startOfMonth },
-    });
-    if (subjectsThisMonth === 0 && totalSubjects > 0) {
-      subjectsThisMonth = totalSubjects;
-    }
+    const [
+      totalSubjects,
+      rawSubjectsThisMonth,
+      subjects,
+      materialsCount,
+      rawFilesThisWeek,
+      realActivitiesCount,
+      quizAttempts,
+    ] = await Promise.all([
+      this.subjectModel.countDocuments({ userId: userObjectId }),
+      this.subjectModel.countDocuments({ userId: userObjectId, createdAt: { $gte: startOfMonth } }),
+      this.subjectModel.find({ userId: userObjectId }).exec(),
+      this.materialModel.countDocuments({ userId: userObjectId }),
+      this.materialModel.countDocuments({ userId: userObjectId, createdAt: { $gte: startOfWeek } }),
+      this.activitiesService.getCount(userId),
+      this.quizAttemptModel.find({ userId: userObjectId }).exec(),
+    ]);
 
-    // Total files count from materials collection or sum of filesCount in subjects
-    const subjects = await this.subjectModel.find({ userId: userObjectId }).exec();
+    const subjectsThisMonth = (rawSubjectsThisMonth === 0 && totalSubjects > 0) ? totalSubjects : rawSubjectsThisMonth;
     const sumFilesFromSubjects = subjects.reduce((sum, s) => sum + (s.filesCount || 0), 0);
-    const materialsCount = await this.materialModel.countDocuments({ userId: userObjectId });
     const totalFiles = Math.max(sumFilesFromSubjects, materialsCount);
-
-    let filesThisWeek = await this.materialModel.countDocuments({
-      userId: userObjectId,
-      createdAt: { $gte: startOfWeek },
-    });
-    if (filesThisWeek === 0 && totalFiles > 0) {
-      filesThisWeek = totalFiles;
-    }
-
-    const realActivitiesCount = await this.activitiesService.getCount(userId);
+    const filesThisWeek = (rawFilesThisWeek === 0 && totalFiles > 0) ? totalFiles : rawFilesThisWeek;
     const completedActivities = Math.max(realActivitiesCount, totalSubjects + totalFiles);
 
-    const quizAttempts = await this.quizAttemptModel.find({ userId: userObjectId }).exec();
     let avgQuizScore = 0;
     if (quizAttempts && quizAttempts.length > 0) {
       const sum = quizAttempts.reduce((acc, curr) => acc + (curr.score || 0), 0);

@@ -66,17 +66,20 @@ export class MaterialsService {
       userId: new Types.ObjectId(userId),
     });
 
+    const isNewUpload = !existing;
     const saved = await newMaterial.save();
 
-    // Recalculate filesCount and progress in Subject (25% per file, up to 100%)
-    const subject = await this.subjectModel.findById(subjectId);
-    const newCount = (subject?.filesCount || 0) + 1;
-    const newProgress = Math.min(100, newCount * 25);
+    // Only increment filesCount if this was a new file upload, not an overwrite
+    if (isNewUpload) {
+      const subject = await this.subjectModel.findById(subjectId).lean();
+      const newCount = (subject?.filesCount || 0) + 1;
+      const newProgress = Math.min(100, newCount * 25);
 
-    await this.subjectModel.updateOne(
-      { _id: new Types.ObjectId(subjectId) },
-      { $set: { filesCount: newCount, progress: newProgress } },
-    );
+      await this.subjectModel.updateOne(
+        { _id: new Types.ObjectId(subjectId) },
+        { $set: { filesCount: newCount, progress: newProgress } },
+      );
+    }
 
     // Log upload activity
     await this.activitiesService.logActivity(userId, 'upload', `Uploaded "${saved.name}"`);
@@ -91,6 +94,7 @@ export class MaterialsService {
         userId: new Types.ObjectId(userId),
       })
       .sort({ createdAt: -1 })
+      .lean()
       .exec();
   }
 
@@ -98,7 +102,7 @@ export class MaterialsService {
     const material = await this.materialModel.findOne({
       _id: new Types.ObjectId(id),
       userId: new Types.ObjectId(userId),
-    });
+    }).lean();
 
     if (!material) {
       throw new NotFoundException('Material not found');
@@ -113,7 +117,7 @@ export class MaterialsService {
     await this.materialModel.deleteOne({ _id: new Types.ObjectId(id) });
 
     // Recalculate filesCount and progress in Subject
-    const subject = await this.subjectModel.findById(material.subjectId);
+    const subject = await this.subjectModel.findById(material.subjectId).lean();
     const newCount = Math.max(0, (subject?.filesCount || 1) - 1);
     const newProgress = Math.min(100, newCount * 25);
 

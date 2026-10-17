@@ -65,7 +65,7 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const port = process.env.PORT || 3005;
+  const port = process.env.PORT || 3001;
   await app.listen(port, '0.0.0.0');
   // eslint-disable-next-line no-console
   console.log(`🚀 Auth backend running on port ${port}`);

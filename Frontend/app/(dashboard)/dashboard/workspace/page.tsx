@@ -384,33 +384,33 @@ function WorkspacePageContent() {
 
         {/* Tab Body View Container */}
         <div className="p-6 sm:p-8 bg-slate-50/40 dark:bg-slate-950/20 min-h-[560px]">
-          {active === "summary" && (
+          <div className={active === "summary" ? "block" : "hidden"}>
             <SummaryTab
               subjectId={selectedSubjectId}
               selectedFileIds={selectedFileIds}
               triggerKey={triggerKey}
             />
-          )}
-          {active === "chat" && (
+          </div>
+          <div className={active === "chat" ? "block" : "hidden"}>
             <ChatTab
               subjectId={selectedSubjectId}
               selectedFileIds={selectedFileIds}
             />
-          )}
-          {active === "flashcards" && (
+          </div>
+          <div className={active === "flashcards" ? "block" : "hidden"}>
             <FlashcardsTab
               subjectId={selectedSubjectId}
               selectedFileIds={selectedFileIds}
               triggerKey={triggerKey}
             />
-          )}
-          {active === "quiz" && (
+          </div>
+          <div className={active === "quiz" ? "block" : "hidden"}>
             <QuizTab
               subjectId={selectedSubjectId}
               selectedFileIds={selectedFileIds}
               triggerKey={triggerKey}
             />
-          )}
+          </div>
         </div>
       </div>
     </div>

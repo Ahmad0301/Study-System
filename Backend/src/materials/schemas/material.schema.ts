@@ -31,3 +31,5 @@ export class Material {
 }
 
 export const MaterialSchema = SchemaFactory.createForClass(Material);
+MaterialSchema.index({ userId: 1, subjectId: 1 });
+MaterialSchema.index({ userId: 1, createdAt: -1 });

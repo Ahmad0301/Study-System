@@ -32,6 +32,7 @@ export class ActivitiesService {
       .find({ userId: new Types.ObjectId(userId) })
       .sort({ createdAt: -1 })
       .limit(limit)
+      .lean()
       .exec();
   }
 
@@ -57,6 +58,8 @@ export class ActivitiesService {
         userId: new Types.ObjectId(userId),
         createdAt: { $gte: monday },
       })
+      .select('createdAt durationMinutes')
+      .lean()
       .exec();
 
     const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

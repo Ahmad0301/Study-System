@@ -22,3 +22,4 @@ export class QuizAttempt {
 }
 
 export const QuizAttemptSchema = SchemaFactory.createForClass(QuizAttempt);
+QuizAttemptSchema.index({ userId: 1, subjectId: 1, createdAt: -1 });

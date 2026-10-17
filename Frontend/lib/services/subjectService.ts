@@ -1,4 +1,5 @@
-// FIXED: subjectService in TypeScript with explicit interfaces and error handling
+import { apiClient, getAccessToken } from "@/lib/apiClient";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export interface SubjectItem {
@@ -41,66 +42,8 @@ export interface ActivityItem {
   time: string;
 }
 
-function getAuthHeaders(): Record<string, string> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
-  if (!refreshToken) return null;
-
-  try {
-    const res = await fetch(`${API_URL}/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
-    });
-
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.accessToken) {
-      localStorage.setItem("accessToken", data.accessToken);
-      if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
-      return data.accessToken;
-    }
-  } catch (_) { }
-
-  return null;
-}
-
-export async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}, isRetry = false): Promise<T> {
-  const headers = {
-    ...getAuthHeaders(),
-    ...(options.headers || {}),
-  };
-
-  const res = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  let data: any = null;
-  try {
-    data = await res.json();
-  } catch (_) {
-    // Empty body
-  }
-
-  if (res.status === 401 && !isRetry) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      return apiFetch<T>(endpoint, options, true);
-    }
-  }
-
-  if (!res.ok) {
-    const message = (Array.isArray(data?.message) ? data.message[0] : data?.message) || "API request failed";
-    throw new Error(message);
-  }
-
-  return data as T;
-}
+// Re-export apiClient as apiFetch for seamless backwards compatibility
+export const apiFetch = apiClient;
 
 const subjectCache = new Map<string, SubjectItem>();
 

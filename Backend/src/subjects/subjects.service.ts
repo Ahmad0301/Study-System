@@ -7,6 +7,7 @@ import { Subject, SubjectDocument } from './schemas/subject.schema';
 import { Material, MaterialDocument } from '../materials/schemas/material.schema';
 import { QuizAttempt, QuizAttemptDocument } from '../ai/schemas/quiz-attempt.schema';
 import { ActivitiesService } from '../activities/activities.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { CreateSubjectDto } from './dto/create-subject.dto';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class SubjectsService {
     @InjectModel(QuizAttempt.name)
     private quizAttemptModel: Model<QuizAttemptDocument>,
     private activitiesService: ActivitiesService,
+    private cloudinaryService: CloudinaryService,
   ) {}
 
   async create(userId: string, createSubjectDto: CreateSubjectDto): Promise<Subject> {
@@ -35,13 +37,14 @@ export class SubjectsService {
     const subjects = await this.subjectModel
       .find({ userId: new Types.ObjectId(userId) })
       .sort({ createdAt: -1 })
+      .lean()
       .exec();
 
     return subjects.map((s) => {
       const filesCount = s.filesCount || 0;
       const progress = s.progress && s.progress > 0 ? s.progress : Math.min(100, filesCount * 25);
       return {
-        ...s.toObject(),
+        ...s,
         progress,
       };
     });
@@ -50,11 +53,12 @@ export class SubjectsService {
   async findOne(userId: string, id: string): Promise<Subject> {
     const subject = await this.subjectModel
       .findOne({ _id: new Types.ObjectId(id), userId: new Types.ObjectId(userId) })
+      .lean()
       .exec();
     if (!subject) {
       throw new NotFoundException('Subject not found');
     }
-    return subject;
+    return subject as unknown as Subject;
   }
 
   async update(userId: string, id: string, dto: CreateSubjectDto): Promise<Subject> {
@@ -82,14 +86,17 @@ export class SubjectsService {
       throw new NotFoundException('Subject not found or unauthorized');
     }
 
-    // Cascade delete: find and delete all materials & physical disk files
+    // Cascade delete: find and delete all materials (Cloudinary + local disk)
     const materials = await this.materialModel.find({
       subjectId: subjectObjectId,
       userId: userObjectId,
-    }).exec();
+    }).lean().exec();
 
     for (const mat of materials) {
-      if (mat.fileUrl && mat.fileUrl.startsWith('/uploads/')) {
+      if (mat.cloudinaryPublicId) {
+        const resType = mat.resourceType || 'raw';
+        await this.cloudinaryService.deleteFile(mat.cloudinaryPublicId, resType).catch(() => {});
+      } else if (mat.fileUrl && mat.fileUrl.startsWith('/uploads/')) {
         const filename = mat.fileUrl.replace('/uploads/', '');
         const filePath = join(process.cwd(), 'uploads', filename);
         if (existsSync(filePath)) {
@@ -126,11 +133,11 @@ export class SubjectsService {
     ] = await Promise.all([
       this.subjectModel.countDocuments({ userId: userObjectId }),
       this.subjectModel.countDocuments({ userId: userObjectId, createdAt: { $gte: startOfMonth } }),
-      this.subjectModel.find({ userId: userObjectId }).exec(),
+      this.subjectModel.find({ userId: userObjectId }).select('filesCount').lean().exec(),
       this.materialModel.countDocuments({ userId: userObjectId }),
       this.materialModel.countDocuments({ userId: userObjectId, createdAt: { $gte: startOfWeek } }),
       this.activitiesService.getCount(userId),
-      this.quizAttemptModel.find({ userId: userObjectId }).exec(),
+      this.quizAttemptModel.find({ userId: userObjectId }).select('score').lean().exec(),
     ]);
 
     const subjectsThisMonth = (rawSubjectsThisMonth === 0 && totalSubjects > 0) ? totalSubjects : rawSubjectsThisMonth;

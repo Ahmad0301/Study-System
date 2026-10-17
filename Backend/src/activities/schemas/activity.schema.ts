@@ -22,3 +22,4 @@ export class Activity {
 }
 
 export const ActivitySchema = SchemaFactory.createForClass(Activity);
+ActivitySchema.index({ userId: 1, createdAt: -1 });

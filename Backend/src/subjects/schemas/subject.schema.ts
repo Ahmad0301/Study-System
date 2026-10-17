@@ -25,3 +25,4 @@ export class Subject {
 }
 
 export const SubjectSchema = SchemaFactory.createForClass(Subject);
+SubjectSchema.index({ userId: 1, createdAt: -1 });

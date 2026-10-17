@@ -80,7 +80,7 @@ export class AiService {
       subjectId: new Types.ObjectId(subjectId),
       type,
       fileIdsKey,
-    }).exec();
+    }).lean().exec();
   }
 
   async generateSummary(userId: string, dto: GenerateAiContentDto) {
@@ -368,7 +368,11 @@ JSON Format (EXACTLY this structure for ALL question types):
   }
 
   async getAverageQuizScore(userId: string): Promise<number> {
-    const attempts = await this.quizAttemptModel.find({ userId: new Types.ObjectId(userId) }).exec();
+    const attempts = await this.quizAttemptModel
+      .find({ userId: new Types.ObjectId(userId) })
+      .select('score')
+      .lean()
+      .exec();
     if (!attempts || attempts.length === 0) return 0;
     const total = attempts.reduce((acc, curr) => acc + (curr.score || 0), 0);
     return Math.round(total / attempts.length);
@@ -403,7 +407,7 @@ JSON Format (EXACTLY this structure for ALL question types):
     if (subjectId) {
       filter.subjectId = new Types.ObjectId(subjectId);
     }
-    return this.chatSessionModel.find(filter).sort({ updatedAt: -1 }).exec();
+    return this.chatSessionModel.find(filter).sort({ updatedAt: -1 }).lean().exec();
   }
 
   async getChatSessionById(userId: string, sessionId: string) {

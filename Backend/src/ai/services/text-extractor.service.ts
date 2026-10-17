@@ -40,95 +40,102 @@ export class TextExtractorService {
     return Buffer.from(arrayBuffer);
   }
 
+  private async extractSingleMaterial(material: MaterialDocument): Promise<{ name: string; text?: string; error?: string }> {
+    if (!material.fileUrl) {
+      return { name: material.name, error: 'missing fileUrl' };
+    }
+
+    const fileUrl = material.fileUrl;
+
+    // Return from cache if already extracted
+    if (this.extractionCache.has(fileUrl)) {
+      const cached = this.extractionCache.get(fileUrl)!;
+      if (cached.trim()) {
+        this.logger.log(`Using cached extraction for: ${material.name}`);
+        return { name: material.name, text: cached.trim() };
+      }
+    }
+
+    // Determine extension reliably from material.type, material.name, or fileUrl
+    let ext = (material.type || '').toLowerCase().trim();
+    if (!ext || ext.includes('/') || ext.includes(':')) {
+      const nameExt = (material.name || '').split('.').pop() || '';
+      if (nameExt && nameExt !== material.name) {
+        ext = nameExt.toLowerCase().trim();
+      }
+    }
+    if (!ext || ext.includes('/') || ext.includes(':')) {
+      const urlPath = fileUrl.split('?')[0];
+      const parts = urlPath.split('.');
+      if (parts.length > 1) {
+        ext = parts.pop()!.toLowerCase().trim();
+      }
+    }
+
+    let text = '';
+
+    try {
+      this.logger.log(`Fetching file from URL: ${fileUrl}`);
+      const buffer = await this.fetchFileBuffer(fileUrl);
+
+      if (ext === 'pdf') {
+        this.logger.log(`Extracting text from PDF: ${material.name}`);
+        const pdfData = await pdfParse(buffer);
+        text = pdfData.text || '';
+
+        if (!text.trim()) {
+          this.logger.warn(`PDF "${material.name}" appears to be image-based or has no selectable text.`);
+          return { name: material.name, error: 'image-based PDF — no selectable text' };
+        }
+      } else if (ext === 'docx' || ext === 'doc') {
+        this.logger.log(`Extracting text from DOCX: ${material.name}`);
+        const result = await mammoth.extractRawText({ buffer });
+        text = result.value || '';
+
+        if (result.messages && result.messages.length > 0) {
+          result.messages.forEach((m) => this.logger.warn(`Mammoth: ${m.message}`));
+        }
+      } else if (ext === 'txt' || ext === 'md' || ext === 'csv') {
+        this.logger.log(`Reading plain text file: ${material.name}`);
+        text = buffer.toString('utf-8');
+      } else {
+        this.logger.warn(`Unsupported file type ".${ext}" for "${material.name}". Supported: pdf, docx, doc, txt, md, csv`);
+        return { name: material.name, error: `unsupported format .${ext}` };
+      }
+    } catch (error: any) {
+      this.logger.error(`Error fetching/parsing file "${material.name}": ${error.message}`);
+      return { name: material.name, error: `fetch/parse error: ${error.message}` };
+    }
+
+    const cleanedText = text.trim();
+    if (cleanedText) {
+      this.extractionCache.set(fileUrl, cleanedText);
+      this.logger.log(`Successfully extracted ${cleanedText.split(/\s+/).length} words from: ${material.name}`);
+      return { name: material.name, text: cleanedText };
+    }
+
+    this.logger.warn(`Extracted empty text from: ${material.name}`);
+    return { name: material.name, error: 'empty content after extraction' };
+  }
+
   async extractTextFromMaterials(materials: MaterialDocument[]): Promise<string> {
     if (!materials || materials.length === 0) {
       throw new BadRequestException('No materials provided for text extraction');
     }
 
+    // Parallelize downloads and parsing across all selected materials
+    const results = await Promise.all(
+      materials.map((material) => this.extractSingleMaterial(material)),
+    );
+
     const extractedTexts: string[] = [];
     const failedFiles: string[] = [];
 
-    for (const material of materials) {
-      if (!material.fileUrl) {
-        this.logger.warn(`Skipping material "${material.name}": missing fileUrl`);
-        continue;
-      }
-
-      const fileUrl = material.fileUrl;
-
-      // Return from cache if already extracted
-      if (this.extractionCache.has(fileUrl)) {
-        const cached = this.extractionCache.get(fileUrl)!;
-        if (cached.trim()) {
-          extractedTexts.push(`--- Document: ${material.name} ---\n${cached.trim()}`);
-          this.logger.log(`Using cached extraction for: ${material.name}`);
-          continue;
-        }
-      }
-
-      // Determine extension reliably from material.type, material.name, or fileUrl
-      let ext = (material.type || '').toLowerCase().trim();
-      if (!ext || ext.includes('/') || ext.includes(':')) {
-        const nameExt = (material.name || '').split('.').pop() || '';
-        if (nameExt && nameExt !== material.name) {
-          ext = nameExt.toLowerCase().trim();
-        }
-      }
-      if (!ext || ext.includes('/') || ext.includes(':')) {
-        const urlPath = fileUrl.split('?')[0];
-        const parts = urlPath.split('.');
-        if (parts.length > 1) {
-          ext = parts.pop()!.toLowerCase().trim();
-        }
-      }
-
-      let text = '';
-
-      try {
-        this.logger.log(`Fetching file from URL: ${fileUrl}`);
-        const buffer = await this.fetchFileBuffer(fileUrl);
-
-        if (ext === 'pdf') {
-          this.logger.log(`Extracting text from PDF: ${material.name}`);
-          const pdfData = await pdfParse(buffer);
-          text = pdfData.text || '';
-
-          if (!text.trim()) {
-            this.logger.warn(`PDF "${material.name}" appears to be image-based or has no selectable text.`);
-            failedFiles.push(`${material.name} (image-based PDF — no selectable text)`);
-            continue;
-          }
-        } else if (ext === 'docx' || ext === 'doc') {
-          this.logger.log(`Extracting text from DOCX: ${material.name}`);
-          const result = await mammoth.extractRawText({ buffer });
-          text = result.value || '';
-
-          if (result.messages && result.messages.length > 0) {
-            result.messages.forEach((m) => this.logger.warn(`Mammoth: ${m.message}`));
-          }
-        } else if (ext === 'txt' || ext === 'md' || ext === 'csv') {
-          this.logger.log(`Reading plain text file: ${material.name}`);
-          text = buffer.toString('utf-8');
-        } else {
-          this.logger.warn(`Unsupported file type ".${ext}" for "${material.name}". Supported: pdf, docx, doc, txt, md, csv`);
-          failedFiles.push(`${material.name} (unsupported format .${ext})`);
-          continue;
-        }
-      } catch (error: any) {
-        this.logger.error(`Error fetching/parsing file "${material.name}": ${error.message}`);
-        failedFiles.push(`${material.name} (fetch/parse error: ${error.message})`);
-        continue;
-      }
-
-      const cleanedText = text.trim();
-      if (cleanedText) {
-        // Cache this extraction
-        this.extractionCache.set(fileUrl, cleanedText);
-        this.logger.log(`Successfully extracted ${cleanedText.split(/\s+/).length} words from: ${material.name}`);
-        extractedTexts.push(`--- Document: ${material.name} ---\n${cleanedText}`);
-      } else {
-        this.logger.warn(`Extracted empty text from: ${material.name}`);
-        failedFiles.push(`${material.name} (empty content after extraction)`);
+    for (const res of results) {
+      if (res.text) {
+        extractedTexts.push(`--- Document: ${res.name} ---\n${res.text}`);
+      } else if (res.error) {
+        failedFiles.push(`${res.name} (${res.error})`);
       }
     }
 

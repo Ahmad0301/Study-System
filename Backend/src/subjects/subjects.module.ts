@@ -7,6 +7,7 @@ import { Subject, SubjectSchema } from './schemas/subject.schema';
 import { Material, MaterialSchema } from '../materials/schemas/material.schema';
 import { QuizAttempt, QuizAttemptSchema } from '../ai/schemas/quiz-attempt.schema';
 import { ActivitiesModule } from '../activities/activities.module';
+import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { ActivitiesModule } from '../activities/activities.module';
     ]),
     JwtModule.register({}),
     ActivitiesModule,
+    CloudinaryModule,
   ],
   controllers: [SubjectsController],
   providers: [SubjectsService],

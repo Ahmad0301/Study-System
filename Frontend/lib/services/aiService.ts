@@ -1,4 +1,4 @@
-import { apiFetch } from "./subjectService";
+import { apiClient as apiFetch } from "@/lib/apiClient";
 
 export interface GenerateAiContentParams {
   subjectId: string;

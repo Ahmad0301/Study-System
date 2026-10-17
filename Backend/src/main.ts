@@ -1,3 +1,9 @@
+import * as dns from 'dns';
+// Force Node.js to use Google and Cloudflare DNS to reliably resolve MongoDB Atlas SRV records
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch (_) {}
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';

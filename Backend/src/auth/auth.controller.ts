@@ -13,6 +13,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Request } from 'express';
@@ -31,6 +32,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   // POST /auth/signup
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('signup')
   @HttpCode(HttpStatus.CREATED)
   signUp(@Body() dto: SignUpDto) {
@@ -38,6 +40,7 @@ export class AuthController {
   }
 
   // POST /auth/signin
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
   @Post('signin')
   @HttpCode(HttpStatus.OK)
   signIn(@Body() dto: SignInDto) {
@@ -52,6 +55,7 @@ export class AuthController {
   }
 
   // POST /auth/forgot-password
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   forgotPassword(@Body() dto: ForgotPasswordDto) {

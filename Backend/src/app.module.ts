@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { HealthController } from './health.controller';
 import { AuthModule } from './auth/auth.module';
 import { SubjectsModule } from './subjects/subjects.module';
 import { MaterialsModule } from './materials/materials.module';
@@ -27,11 +30,26 @@ import { AiModule } from './ai/ai.module';
       }),
     }),
 
+    // Rate limiting: 60 requests per minute per IP by default
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 60,
+      },
+    ]),
+
     AuthModule,
     SubjectsModule,
     MaterialsModule,
     ActivitiesModule,
     AiModule,
+  ],
+  controllers: [HealthController],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule { }
